@@ -21,11 +21,11 @@ app.add_middleware(
 )
 
 # API 라우터 포함
-app.include_router(auth.router, prefix=settings.API_V1_STR, tags=["auth"])
-app.include_router(tenants.router, prefix=settings.API_V1_STR, tags=["tenants"])
-app.include_router(users.router, prefix=settings.API_V1_STR, tags=["users"])
-app.include_router(accounts.router, prefix=settings.API_V1_STR, tags=["accounts"])
-app.include_router(opportunities.router, prefix=settings.API_V1_STR, tags=["opportunities"])
+app.include_router(auth.router, prefix="/api/v1/auth", tags=["auth"])
+app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
+app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["accounts"])
+app.include_router(opportunities.router, prefix="/api/v1/opportunities", tags=["opportunities"])
+app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
 
 @app.get("/")
 async def root():
