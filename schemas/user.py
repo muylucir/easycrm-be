@@ -11,7 +11,7 @@ class UserBase(BaseModel):
 
 class UserCreate(UserBase):
     """사용자 생성 시 사용되는 스키마"""
-    tenant_id: str = Field(..., description="사용자가 속한 테넌트의 ID")
+    tenant_name: str = Field(..., description="사용자가 속한 테넌트의 ID")
     given_name: str  # 'name'을 'given_name'으로 변경
     family_name: str
     user_id: Optional[str] = None

@@ -13,7 +13,7 @@ class UserModel(Model):
         region = settings.AWS_REGION
 
     user_id = UnicodeAttribute(hash_key=True)  # Cognito의 사용자 ID와 연동
-    tenant_id = UnicodeAttribute(range_key=True)  # 테넌트 ID (Cognito 그룹 이름)
+    tenant_name = UnicodeAttribute(range_key=True)  # 테넌트 ID (Cognito 그룹 이름)
     email = UnicodeAttribute()
     given_name = UnicodeAttribute()
     family_name = UnicodeAttribute()

@@ -1,5 +1,5 @@
 from pynamodb.models import Model
-from pynamodb.attributes import UnicodeAttribute, NumberAttribute, UTCDateTimeAttribute
+from pynamodb.attributes import UnicodeAttribute, BooleanAttribute, UTCDateTimeAttribute
 from datetime import datetime
 from app.core.config import settings
 import os
@@ -13,10 +13,10 @@ class TenantModel(Model):
         region = settings.AWS_REGION
 
     tenant_id = UnicodeAttribute(hash_key=True)  # Cognito 그룹 이름과 연동
-    name = UnicodeAttribute()
+    tenant_name = UnicodeAttribute()
     created_at = UTCDateTimeAttribute(default=datetime.utcnow)
     updated_at = UTCDateTimeAttribute(default=datetime.utcnow)
-    is_active = NumberAttribute(default=1)  # 1: 활성, 0: 비활성
+    is_active = BooleanAttribute(default=True)  # 1: 활성, 0: 비활성
 
     def save(self, **kwargs):
         self.updated_at = datetime.utcnow()

@@ -1,6 +1,6 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from app.api import auth, tenants, users, accounts, opportunities
+from app.api import auth, tenants, users, accounts, opportunities, onboarding
 from app.core.config import settings
 
 # FastAPI 애플리케이션 인스턴스 생성
@@ -26,6 +26,7 @@ app.include_router(users.router, prefix="/api/v1/users", tags=["users"])
 app.include_router(accounts.router, prefix="/api/v1/accounts", tags=["accounts"])
 app.include_router(opportunities.router, prefix="/api/v1/opportunities", tags=["opportunities"])
 app.include_router(tenants.router, prefix="/api/v1/tenants", tags=["tenants"])
+app.include_router(onboarding.router, prefix="/api/v1/onboarding", tags=["onboarding"])
 
 @app.get("/")
 async def root():

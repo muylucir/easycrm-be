@@ -28,20 +28,30 @@ class AuthService:
                     {'Name': 'email', 'Value': user.email},
                     {'Name': 'given_name', 'Value': user.given_name},
                     {'Name': 'family_name', 'Value': user.family_name},
-                    {'Name': 'custom:tenant_id', 'Value': user.tenant_id},
+                    {'Name': 'custom:tenant_name', 'Value': user.tenant_name},
                     {'Name': 'custom:role', 'Value': user.role},
                 ]
             )
             
             cognito_user_id = cognito_response['UserSub']
             
-            # UserCreate 객체에 Cognito 사용자 ID 추가
-            user_data = user.dict()
-            user_data['user_id'] = cognito_user_id
-            
-            db_user = await self.user_service.create_user(UserCreate(**user_data))
-            
-            return db_user
+            db_user = UserModel(
+                user_id=cognito_user_id,
+                tenant_name=user.tenant_name,
+                email=user.email,
+                given_name=user.given_name,
+                family_name=user.family_name,
+                role=user.role
+            )
+            db_user.save()
+
+           # Cognito 사용자 확인 (이메일 인증 건너뛰기)
+            self.cognito_client.admin_confirm_sign_up(
+                UserPoolId=settings.COGNITO_USER_POOL_ID,
+                Username=user.email
+            )
+
+            return UserInDB(**db_user.attribute_values)
         except ClientError as e:
             raise HTTPException(status_code=400, detail=str(e))
 
