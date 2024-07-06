@@ -27,7 +27,7 @@ class UserUpdate(BaseModel):
 class UserInDB(UserBase):
     """데이터베이스에 저장된 사용자 정보를 표현하는 스키마"""
     user_id: str = Field(..., description="사용자의 고유 ID")
-    tenant_id: str = Field(..., description="사용자가 속한 테넌트의 ID")
+    tenant_name: str = Field(..., description="사용자가 속한 테넌트의 ID")
     created_at: datetime = Field(..., description="사용자 계정 생성 시간")
     updated_at: datetime = Field(..., description="사용자 정보 최종 수정 시간")
     is_active: bool = Field(..., description="사용자의 활성 상태")

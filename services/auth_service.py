@@ -1,18 +1,21 @@
 import boto3
+import traceback
 from botocore.exceptions import ClientError
 from app.core.config import settings
 from app.core.security import verify_cognito_token
 from app.schemas.user import UserCreate, UserInDB
-from app.services.user_service import UserService
+from app.models.user import UserModel
 from fastapi import HTTPException
-from jose import jwt
-from datetime import datetime, timedelta
-from typing import Optional
+from typing import Dict, Any
 
 class AuthService:
-    def __init__(self):
-        self.cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
-        self.user_service = UserService()
+    _instance = None
+
+    def __new__(cls):
+        if cls._instance is None:
+            cls._instance = super(AuthService, cls).__new__(cls)
+            cls._instance.cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
+        return cls._instance
 
     async def register_user(self, user: UserCreate) -> UserInDB:
         """
@@ -52,10 +55,11 @@ class AuthService:
             )
 
             return UserInDB(**db_user.attribute_values)
-        except ClientError as e:
-            raise HTTPException(status_code=400, detail=str(e))
+        except Exception as e:
+            error_details = traceback.format_exc()
+            raise HTTPException(status_code=400, detail=f"Error in register_user: {str(e)}\n{error_details}")
 
-    async def authenticate_user(self, username: str, password: str):
+    async def authenticate_user(self, username: str, password: str) -> Dict[str, Any]:
         try:
             auth_response = self.cognito_client.initiate_auth(
                 ClientId=settings.COGNITO_APP_CLIENT_ID,
@@ -66,41 +70,37 @@ class AuthService:
                 }
             )
             
-            id_token = auth_response['AuthenticationResult']['IdToken']
+            auth_result = auth_response['AuthenticationResult']
             
             # Cognito 토큰 검증
-            claims = verify_cognito_token(id_token)
-            
-            user_id = claims['sub']
-            tenant_id = claims.get('custom:tenant_id')  # Cognito에서 설정한 사용자 지정 속성
+            claims = verify_cognito_token(auth_result['IdToken'])
             
             return {
-                "access_token": id_token,
+                "access_token": auth_result['AccessToken'],
+                "id_token": auth_result['IdToken'],
+                "refresh_token": auth_result['RefreshToken'],
                 "token_type": "bearer",
-                "user_id": user_id,
-                "tenant_id": tenant_id
+                "expires_in": auth_result['ExpiresIn'],
+                "user_id": claims['sub'],
+                "tenant_name": claims.get('custom:tenant_name')
             }
         except self.cognito_client.exceptions.NotAuthorizedException:
             raise HTTPException(status_code=401, detail="Incorrect username or password")
         except Exception as e:
             raise HTTPException(status_code=500, detail=str(e))
 
-    async def change_password(self, user_id: str, old_password: str, new_password: str) -> bool:
+    async def change_password(self, access_token: str, old_password: str, new_password: str) -> bool:
         """
         사용자 비밀번호 변경
         """
         try:
-            user = await self.user_service.get_user(user_id)
-            if not user:
-                raise HTTPException(status_code=404, detail="User not found")
-
-            response = self.cognito_client.change_password(
+            self.cognito_client.change_password(
                 PreviousPassword=old_password,
                 ProposedPassword=new_password,
-                AccessToken=user.cognito_access_token  # 이 필드가 UserInDB 모델에 추가되어야 함
+                AccessToken=access_token
             )
             return True
-        except ClientError as e:
+        except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     async def forgot_password(self, email: str) -> bool:
@@ -108,12 +108,12 @@ class AuthService:
         비밀번호 재설정 코드 요청
         """
         try:
-            response = self.cognito_client.forgot_password(
+            self.cognito_client.forgot_password(
                 ClientId=settings.COGNITO_APP_CLIENT_ID,
                 Username=email
             )
             return True
-        except ClientError as e:
+        except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
 
     async def confirm_forgot_password(self, email: str, confirmation_code: str, new_password: str) -> bool:
@@ -121,31 +121,28 @@ class AuthService:
         비밀번호 재설정 확인
         """
         try:
-            response = self.cognito_client.confirm_forgot_password(
+            self.cognito_client.confirm_forgot_password(
                 ClientId=settings.COGNITO_APP_CLIENT_ID,
                 Username=email,
                 ConfirmationCode=confirmation_code,
                 Password=new_password
             )
             return True
-        except ClientError as e:
+        except Exception as e:
             raise HTTPException(status_code=400, detail=str(e))
     
-    async def logout_user(self, user_id: str):
+    async def logout_user(self, access_token: str):
         """
         사용자 로그아웃 처리
-        :param user_id: 로그아웃할 사용자의 ID
+        :param access_token: 사용자의 액세스 토큰
         """
         try:
-            # 여기서 필요한 로그아웃 로직을 구현합니다
-            # 예: 토큰 블랙리스트에 추가, Cognito 세션 무효화 등
-            
             # Cognito 글로벌 로그아웃 (모든 디바이스에서 로그아웃)
-            self.cognito_client.global_sign_out(
-                AccessToken=user_id  # 실제로는 액세스 토큰을 사용해야 합니다
-            )
-            
-            print(f"User {user_id} logged out successfully")
+            self.cognito_client.global_sign_out(AccessToken=access_token)
+            print(f"User logged out successfully")
         except Exception as e:
-            print(f"Error during logout for user {user_id}: {str(e)}")
+            print(f"Error during logout: {str(e)}")
             raise HTTPException(status_code=500, detail="Error during logout")
+
+def get_auth_service():
+    return AuthService()

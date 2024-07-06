@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, HTTPException
 from app.schemas.tenant import TenantCreate
 from app.schemas.user import UserCreate
 from app.schemas.onboarding import OnboardingRequest
-from app.services.onboarding_service import OnboardingService
+from app.services.onboarding_service import get_onboarding_service, OnboardingService
 from app.core.deps import get_current_active_admin
 
 router = APIRouter()
@@ -11,7 +11,7 @@ router = APIRouter()
 @router.post("/onboard")
 async def onboard_tenant_and_admin(
     onboarding_request: OnboardingRequest,
-    onboarding_service: OnboardingService = Depends()
+    onboarding_service: OnboardingService = Depends(get_onboarding_service)
 ):
     return await onboarding_service.create_tenant_and_admin(onboarding_request)
 
@@ -19,7 +19,7 @@ async def onboard_tenant_and_admin(
 @router.post("/user")
 async def create_user(
     user: UserCreate,
-    onboarding_service: OnboardingService = Depends(),
+    onboarding_service: OnboardingService = Depends(get_onboarding_service),
     current_admin: dict = Depends(get_current_active_admin)
 ):
     return await onboarding_service.create_user(user)

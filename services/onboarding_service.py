@@ -1,5 +1,9 @@
 # /crm_saas/app/services/onboarding_service.py
 import uuid
+import boto3
+import logging
+import traceback
+from app.core.config import settings
 from app.models.tenant import TenantModel
 from app.models.user import UserModel
 from app.schemas.tenant import TenantCreate
@@ -8,9 +12,13 @@ from app.schemas.onboarding import OnboardingRequest
 from app.services.auth_service import AuthService
 from fastapi import HTTPException
 
+
+
+logger = logging.getLogger(__name__)
+
 class OnboardingService:
-    def __init__(self, auth_service: AuthService):
-        self.auth_service = auth_service
+    def __init__(self):
+        self.auth_service = AuthService()
         self.cognito_client = boto3.client('cognito-idp', region_name=settings.AWS_REGION)
 
     async def create_tenant_and_admin(self, onboarding_request: OnboardingRequest):
@@ -52,7 +60,8 @@ class OnboardingService:
                 GroupName=tenant.tenant_name,
                 UserPoolId=settings.COGNITO_USER_POOL_ID
             )
-            raise HTTPException(status_code=400, detail=f"Could not create admin user: {str(e)}")
+            error_details = traceback.format_exc()
+            raise HTTPException(status_code=400, detail=f"Could not create admin user: {str(e)}\n{error_details}")
 
         # 관리자를 Cognito 그룹에 추가
         try:
@@ -91,3 +100,6 @@ class OnboardingService:
             print(f"Warning: Could not add user to Cognito group: {str(e)}")
 
         return new_user
+
+def get_onboarding_service():
+    return OnboardingService()
